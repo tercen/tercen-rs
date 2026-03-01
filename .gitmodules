@@ -1,0 +1,3 @@
+[submodule "tercen_grpc_api"]
+	path = tercen_grpc_api
+	url = https://github.com/tercen/tercen_grpc_api.git

@@ -1,0 +1,460 @@
+[
+  {
+    "name": "Jet",
+    "type": "sequential",
+    "colors": [
+      "#00007F",
+      "#0000FF",
+      "#007FFF",
+      "#00FFFF",
+      "#7FFF7F",
+      "#FFFF00",
+      "#FF7F00",
+      "#FF0000",
+      "#7F0000"
+    ]
+  },
+  {
+    "name": "Spectral",
+    "type": "sequential",
+    "colors": [
+      "#9E0142",
+      "#D53E4F",
+      "#F46D43",
+      "#FDAE61",
+      "#FEE08B",
+      "#FFFFBF",
+      "#E6F598",
+      "#ABDDA4",
+      "#66C2A5",
+      "#3288BD",
+      "#5E4FA2"
+    ]
+  },
+  {
+    "name": "Reds",
+    "type": "sequential",
+    "colors": [
+      "#f7f7f7",
+      "#ca0020"
+    ]
+  },
+  {
+    "name": "Greys",
+    "type": "sequential",
+    "colors": [
+      "#f7f7f7",
+      "#404040"
+    ]
+  },
+  {
+    "name": "Viridis",
+    "type": "sequential",
+    "colors": [
+      "#440154FF",
+      "#3B528BFF",
+      "#21908CFF",
+      "#5DC863FF",
+      "#FDE725FF"
+    ]
+  },
+  {
+    "name": "GnBu",
+    "type": "sequential",
+    "colors": [
+      "#F7FCF0",
+      "#E0F3DB",
+      "#CCEBC5",
+      "#A8DDB5",
+      "#7BCCC4",
+      "#4EB3D3",
+      "#2B8CBE",
+      "#0868AC",
+      "#084081"
+    ]
+  },
+  {
+    "name": "YlGnBu",
+    "type": "sequential",
+    "colors": [
+      "#FFFFD9",
+      "#EDF8B1",
+      "#C7E9B4",
+      "#7FCDBB",
+      "#41B6C4",
+      "#1D91C0",
+      "#225EA8",
+      "#253494",
+      "#081D58"
+    ]
+  },
+  {
+    "name": "PuRd",
+    "type": "sequential",
+    "colors": [
+      "#F7F4F9",
+      "#E7E1EF",
+      "#D4B9DA",
+      "#C994C7",
+      "#DF65B0",
+      "#E7298A",
+      "#CE1256",
+      "#980043",
+      "#67001F"
+    ]
+  },
+  {
+    "name": "Winter",
+    "type": "sequential",
+    "colors": [
+      "#0000ff",
+      "#0019f2",
+      "#0033e6",
+      "#004cd9",
+      "#0066cc",
+      "#0080bf",
+      "#0099b2",
+      "#00b3a6",
+      "#00cc99",
+      "#00e68c",
+      "#00ff80"
+    ]
+  },
+  {
+    "name": "Cool",
+    "type": "sequential",
+    "colors": [
+      "#00ffff",
+      "#19e6ff",
+      "#33ccff",
+      "#4cb3ff",
+      "#6699ff",
+      "#807fff",
+      "#9966ff",
+      "#b34cff",
+      "#cc33ff",
+      "#e619ff",
+      "#ff00ff"
+    ]
+  },
+  {
+    "name": "Wistia",
+    "type": "sequential",
+    "colors": [
+      "#e4ff7a",
+      "#eff654",
+      "#faed2d",
+      "#ffe015",
+      "#ffce0a",
+      "#ffbd00",
+      "#ffb100",
+      "#ffa600",
+      "#fe9900",
+      "#fd8c00",
+      "#fc7f00"
+    ]
+  },
+  {
+    "name": "Hot",
+    "type": "sequential",
+    "colors": [
+      "#0b0000",
+      "#4c0000",
+      "#900000",
+      "#d20000",
+      "#ff1700",
+      "#ff5c00",
+      "#ff9d00",
+      "#ffe100",
+      "#ffff36",
+      "#ffff9d",
+      "#ffffff"
+    ]
+  },
+  {
+    "name": "Afmhot",
+    "type": "sequential",
+    "colors": [
+      "#000000",
+      "#320000",
+      "#660000",
+      "#981800",
+      "#cc4d00",
+      "#ff8001",
+      "#ffb233",
+      "#ffe667",
+      "#ffff99",
+      "#ffffcd",
+      "#ffffff"
+    ]
+  },
+  {
+    "name": "RdBu",
+    "type": "diverging",
+    "colors": [
+      "#EF8A62",
+      "#F7F7F7",
+      "#67A9CF"
+    ]
+  },
+  {
+    "name": "PiYG",
+    "type": "diverging",
+    "colors": [
+      "#E9A3C9",
+      "#F7F7F7",
+      "#A1D76A"
+    ]
+  },
+  {
+    "name": "Palette-1",
+    "type": "categorical",
+    "colors": [
+      "#1F78B4",
+      "#E31A1C",
+      "#33A02C",
+      "#A6CEE3",
+      "#B2DF8A",
+      "#FB9A99",
+      "#FDBF6F",
+      "#FF7F00",
+      "#CAB2D6",
+      "#6A3D9A",
+      "#FFFF99",
+      "#B15928",
+      "#1B9E77",
+      "#D95F02",
+      "#7570B3",
+      "#E7298A",
+      "#66A61E",
+      "#E6AB02",
+      "#A6761D",
+      "#666666",
+      "#E41A1C",
+      "#377EB8",
+      "#4DAF4A",
+      "#984EA3",
+      "#FF7F00",
+      "#FFFF33",
+      "#A65628",
+      "#F781BF",
+      "#999999",
+      "#E41A1C",
+      "#377EB8",
+      "#4DAF4A",
+      "#984EA3",
+      "#FF7F00",
+      "#FFFF33",
+      "#A65628",
+      "#F781BF"
+    ]
+  },
+  {
+    "name": "Palette-2",
+    "type": "categorical",
+    "colors": [
+      "#0000FF",
+      "#00FF00",
+      "#00FFFF",
+      "#008000",
+      "#800080",
+      "#000080",
+      "#800000",
+      "#008080",
+      "#808000",
+      "#FF00FF",
+      "#3E00FF",
+      "#3EFF00",
+      "#FFFF3E",
+      "#3EFFFF",
+      "#00803E",
+      "#803E80",
+      "#3E0080",
+      "#803E00",
+      "#3E8080",
+      "#80803E",
+      "#3E3EFF",
+      "#FFFF00",
+      "#AFFF50",
+      "#FF0000",
+      "#0089FF",
+      "#BEFF41",
+      "#FF0100",
+      "#56FFA9",
+      "#0000BD",
+      "#FF0000",
+      "#CEFF31",
+      "#006FFF",
+      "#FF0000",
+      "#D4FF2B",
+      "#0000D6",
+      "#FF5100",
+      "#0055FF",
+      "#95FF6A",
+      "#FF0000",
+      "#000EFF",
+      "#9DFF62",
+      "#FF0000",
+      "#5555FF",
+      "#55FF55",
+      "#55FFFF",
+      "#55AB55",
+      "#AB55AB",
+      "#5555AB",
+      "#AB5555",
+      "#55ABAB",
+      "#ABAB55",
+      "#FF55FF",
+      "#7F55FF",
+      "#7FFF55",
+      "#FFFF7F",
+      "#7FFFFF",
+      "#55AB7F",
+      "#AB7FAB",
+      "#7F55AB",
+      "#AB7F55",
+      "#7FABAB",
+      "#ABAB7F",
+      "#7F7FFF",
+      "#FFFF55",
+      "#CAFF8B",
+      "#FF5555",
+      "#55B1FF",
+      "#D4FF81",
+      "#FF5655",
+      "#8FFFC6",
+      "#5555D3",
+      "#FF5555",
+      "#DFFF76",
+      "#559FFF",
+      "#FF5555",
+      "#E3FF72",
+      "#5555E4",
+      "#FF8B55",
+      "#558EFF",
+      "#B9FF9C",
+      "#FF5555",
+      "#555FFF",
+      "#BEFF97",
+      "#FF5555"
+    ]
+  },
+  {
+    "name": "Accent",
+    "type": "categorical",
+    "colors": [
+      "#7FC97F",
+      "#BEAED4",
+      "#FDC086",
+      "#FFFF99",
+      "#386CB0",
+      "#F0027F",
+      "#BF5B17",
+      "#666666"
+    ]
+  },
+  {
+    "name": "Dark2",
+    "type": "categorical",
+    "colors": [
+      "#1B9E77",
+      "#D95F02",
+      "#7570B3",
+      "#E7298A",
+      "#66A61E",
+      "#E6AB02",
+      "#A6761D",
+      "#666666"
+    ]
+  },
+  {
+    "name": "Set1",
+    "type": "categorical",
+    "colors": [
+      "#E41A1C",
+      "#377EB8",
+      "#4DAF4A",
+      "#984EA3",
+      "#FF7F00",
+      "#FFFF33",
+      "#A65628",
+      "#F781BF",
+      "#999999"
+    ]
+  },
+  {
+    "name": "Set2",
+    "type": "categorical",
+    "colors": [
+      "#66C2A5",
+      "#FC8D62",
+      "#8DA0CB",
+      "#E78AC3",
+      "#A6D854",
+      "#FFD92F",
+      "#E5C494",
+      "#B3B3B3"
+    ]
+  },
+  {
+    "name": "Set3",
+    "type": "categorical",
+    "colors": [
+      "#8DD3C7",
+      "#FFFFB3",
+      "#BEBADA",
+      "#FB8072",
+      "#80B1D3",
+      "#FDB462",
+      "#B3DE69",
+      "#FCCDE5",
+      "#D9D9D9",
+      "#BC80BD",
+      "#CCEBC5",
+      "#FFED6F"
+    ]
+  },
+  {
+    "name": "tab10",
+    "type": "categorical",
+    "colors": [
+      "#1f77b4",
+      "#ff7f0e",
+      "#2ca02c",
+      "#d62728",
+      "#9467bd",
+      "#8c564b",
+      "#e377c2",
+      "#7f7f7f",
+      "#bcbd22",
+      "#17becf",
+      "#17becf"
+    ]
+  },
+  {
+    "name": "tab20",
+    "type": "categorical",
+    "colors": [
+      "#1f77b4",
+      "#aec7e8",
+      "#ff7f0e",
+      "#ffbb78",
+      "#2ca02c",
+      "#98df8a",
+      "#d62728",
+      "#ff9896",
+      "#9467bd",
+      "#c5b0d5",
+      "#8c564b",
+      "#c49c94",
+      "#e377c2",
+      "#f7b6d2",
+      "#7f7f7f",
+      "#c7c7c7",
+      "#bcbd22",
+      "#dbdb8d",
+      "#17becf",
+      "#9edae5"
+    ]
+  }
+]
