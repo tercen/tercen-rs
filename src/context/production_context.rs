@@ -92,25 +92,29 @@ impl ProductionContext {
             .map(|os| os.namespace.clone())
             .unwrap_or_default();
 
-        // Get workflow_id and step_id from task environment
+        // Get workflow_id and step_id from task environment (optional for computation operators)
         let workflow_id = task_environment
             .iter()
             .find(|p| p.key == "workflow.id")
             .map(|p| p.value.clone())
             .or_else(|| std::env::var("WORKFLOW_ID").ok())
-            .ok_or("workflow.id not found in task environment")?;
+            .unwrap_or_default();
 
         let step_id = task_environment
             .iter()
             .find(|p| p.key == "step.id")
             .map(|p| p.value.clone())
             .or_else(|| std::env::var("STEP_ID").ok())
-            .ok_or("step.id not found in task environment")?;
+            .unwrap_or_default();
 
-        println!(
-            "[ProductionContext] workflow_id={}, step_id={}",
-            workflow_id, step_id
-        );
+        if !workflow_id.is_empty() {
+            println!(
+                "[ProductionContext] workflow_id={}, step_id={}",
+                workflow_id, step_id
+            );
+        } else {
+            println!("[ProductionContext] No workflow.id in task environment (computation operator mode)");
+        }
 
         // Get schema_ids: try task first, fall back to parent CubeQueryTask via parentTaskId
         if schema_ids.is_empty() && !parent_task_id.is_empty() {
@@ -150,77 +154,85 @@ impl ProductionContext {
         )
         .await?;
 
-        // Fetch workflow for color extraction
-        let workflow = super::helpers::fetch_workflow(&client, &workflow_id).await?;
-
-        // Extract per-layer color information
-        let per_layer_colors = super::helpers::extract_per_layer_color_info_from_workflow(
-            &client,
-            &schema_ids,
-            &workflow,
-            &step_id,
-            "ProductionContext",
-        )
-        .await?;
-
-        // Also extract legacy color_infos for backwards compatibility
-        let color_infos = super::helpers::extract_color_info_from_workflow(
-            &client,
-            &schema_ids,
-            &workflow,
-            &step_id,
-            "ProductionContext",
-        )
-        .await?;
-
         // Extract page factors from operator settings
         let page_factors = crate::extract_page_factors(operator_settings.as_ref());
-
-        // Extract point size from workflow step (use already fetched workflow)
-        let point_size = match crate::extract_point_size_from_step(&workflow, &step_id) {
-            Ok(ps) => ps,
-            Err(e) => {
-                eprintln!("[ProductionContext] Failed to extract point_size: {}", e);
-                None
-            }
-        };
-
-        // Extract chart kind from workflow step (use already fetched workflow)
-        let chart_kind = match crate::extract_chart_kind_from_step(&workflow, &step_id) {
-            Ok(ck) => {
-                println!("[ProductionContext] Chart kind: {:?}", ck);
-                ck
-            }
-            Err(e) => {
-                eprintln!("[ProductionContext] Failed to extract chart_kind: {}", e);
-                ChartKind::Point
-            }
-        };
-
-        // Extract crosstab dimensions from workflow step model (use already fetched workflow)
-        let crosstab_dimensions = super::helpers::extract_crosstab_dimensions(&workflow, &step_id);
-        if let Some((w, h)) = crosstab_dimensions {
-            println!(
-                "[ProductionContext] Crosstab dimensions: {}×{} pixels",
-                w, h
-            );
-        }
 
         // Extract axis transforms from CubeAxisQuery
         let (y_transform, x_transform) =
             super::helpers::extract_transforms_from_cube_query(&cube_query);
 
-        // Extract layer palette name from GlTask (preferred) or fallback to crosstab palette
-        let layer_palette_name =
-            match super::helpers::extract_layer_palette_from_gltask(&client, &workflow, &step_id)
-                .await
+        // Workflow-dependent settings (colors, chart kind, point size, etc.)
+        // Only available when workflow.id and step.id are in the task environment.
+        // Computation operators (mean, sum, etc.) don't need these.
+        let mut per_layer_colors = None;
+        let mut color_infos = Vec::new();
+        let mut point_size = None;
+        let mut chart_kind = ChartKind::Point;
+        let mut crosstab_dimensions = None;
+        let mut layer_palette_name = None;
+        let mut layer_y_factor_names = Vec::new();
+
+        if !workflow_id.is_empty() && !step_id.is_empty() {
+            let workflow = super::helpers::fetch_workflow(&client, &workflow_id).await?;
+
+            per_layer_colors = Some(
+                super::helpers::extract_per_layer_color_info_from_workflow(
+                    &client,
+                    &schema_ids,
+                    &workflow,
+                    &step_id,
+                    "ProductionContext",
+                )
+                .await?,
+            );
+
+            color_infos = super::helpers::extract_color_info_from_workflow(
+                &client,
+                &schema_ids,
+                &workflow,
+                &step_id,
+                "ProductionContext",
+            )
+            .await?;
+
+            point_size = match crate::extract_point_size_from_step(&workflow, &step_id) {
+                Ok(ps) => ps,
+                Err(e) => {
+                    eprintln!("[ProductionContext] Failed to extract point_size: {}", e);
+                    None
+                }
+            };
+
+            chart_kind = match crate::extract_chart_kind_from_step(&workflow, &step_id) {
+                Ok(ck) => {
+                    println!("[ProductionContext] Chart kind: {:?}", ck);
+                    ck
+                }
+                Err(e) => {
+                    eprintln!("[ProductionContext] Failed to extract chart_kind: {}", e);
+                    ChartKind::Point
+                }
+            };
+
+            crosstab_dimensions =
+                super::helpers::extract_crosstab_dimensions(&workflow, &step_id);
+            if let Some((w, h)) = crosstab_dimensions {
+                println!(
+                    "[ProductionContext] Crosstab dimensions: {}×{} pixels",
+                    w, h
+                );
+            }
+
+            layer_palette_name = match super::helpers::extract_layer_palette_from_gltask(
+                &client, &workflow, &step_id,
+            )
+            .await
             {
                 Ok(Some(name)) => {
                     println!("[ProductionContext] Layer palette (from GlTask): {}", name);
                     Some(name)
                 }
                 Ok(None) | Err(_) => {
-                    // Fallback to crosstab palette extraction
                     let name = crate::extract_crosstab_palette_name(&workflow, &step_id);
                     if let Some(ref n) = name {
                         println!("[ProductionContext] Layer palette (from crosstab): {}", n);
@@ -229,14 +241,14 @@ impl ProductionContext {
                 }
             };
 
-        // Extract Y-axis factor names per layer (for legend entries)
-        let layer_y_factor_names =
-            super::helpers::extract_layer_y_factor_names(&workflow, &step_id);
-        if !layer_y_factor_names.is_empty() {
-            println!(
-                "[ProductionContext] Layer Y-factor names: {:?}",
-                layer_y_factor_names
-            );
+            layer_y_factor_names =
+                super::helpers::extract_layer_y_factor_names(&workflow, &step_id);
+            if !layer_y_factor_names.is_empty() {
+                println!(
+                    "[ProductionContext] Layer Y-factor names: {:?}",
+                    layer_y_factor_names
+                );
+            }
         }
 
         // Build ContextBase using the builder
@@ -250,7 +262,7 @@ impl ProductionContext {
             .namespace(namespace)
             .operator_settings(operator_settings)
             .color_infos(color_infos)
-            .per_layer_colors(Some(per_layer_colors))
+            .per_layer_colors(per_layer_colors)
             .page_factors(page_factors)
             .y_axis_table_id(y_axis_table_id)
             .x_axis_table_id(x_axis_table_id)
