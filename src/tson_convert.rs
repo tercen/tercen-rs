@@ -136,6 +136,31 @@ fn tson_column_to_polars_series(col_name: &str, col_data: &TsonValue) -> Result<
             let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
             Ok(Series::new(col_name.into(), i64_values))
         }
+        TsonValue::LSTU32(values) => {
+            // u32 array - convert to i64
+            let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
+            Ok(Series::new(col_name.into(), i64_values))
+        }
+        TsonValue::LSTU64(values) => {
+            // u64 array - convert to i64 (may truncate for very large values)
+            let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
+            Ok(Series::new(col_name.into(), i64_values))
+        }
+        TsonValue::LSTU8(values) => {
+            // u8 array - convert to i64
+            let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
+            Ok(Series::new(col_name.into(), i64_values))
+        }
+        TsonValue::LSTI8(values) => {
+            // i8 array - convert to i64
+            let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
+            Ok(Series::new(col_name.into(), i64_values))
+        }
+        TsonValue::LSTF32(values) => {
+            // f32 array - convert to f64
+            let f64_values: Vec<f64> = values.iter().map(|&v| v as f64).collect();
+            Ok(Series::new(col_name.into(), f64_values))
+        }
         TsonValue::LSTSTR(strvec) => {
             // String array
             let strings = strvec
@@ -184,11 +209,17 @@ fn tson_value_to_any_value(tson: &TsonValue) -> Result<AnyValue<'static>> {
 /// Get the length of a TSON column array
 fn get_column_length(col_data: &TsonValue) -> Result<usize> {
     match col_data {
-        TsonValue::LST(values) => Ok(values.len()),
-        TsonValue::LSTI32(values) => Ok(values.len()),
-        TsonValue::LSTF64(values) => Ok(values.len()),
-        TsonValue::LSTU16(values) => Ok(values.len()),
-        TsonValue::LSTI16(values) => Ok(values.len()),
+        TsonValue::LST(v) => Ok(v.len()),
+        TsonValue::LSTU8(v) => Ok(v.len()),
+        TsonValue::LSTI8(v) => Ok(v.len()),
+        TsonValue::LSTU16(v) => Ok(v.len()),
+        TsonValue::LSTI16(v) => Ok(v.len()),
+        TsonValue::LSTU32(v) => Ok(v.len()),
+        TsonValue::LSTI32(v) => Ok(v.len()),
+        TsonValue::LSTU64(v) => Ok(v.len()),
+        TsonValue::LSTI64(v) => Ok(v.len()),
+        TsonValue::LSTF32(v) => Ok(v.len()),
+        TsonValue::LSTF64(v) => Ok(v.len()),
         TsonValue::LSTSTR(strvec) => strvec
             .try_to_vec()
             .map(|v| v.len())
