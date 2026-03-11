@@ -27,11 +27,9 @@ impl Deref for ProductionContext {
 impl ProductionContext {
     /// Create a new ProductionContext from a task_id
     ///
-    /// This fetches the task, extracts the CubeQuery, and retrieves schema_ids
-    /// from the CubeQueryTask (via step.model.taskId).
-    ///
-    /// The CubeQueryTask MUST complete before the operator runs, so schema_ids
-    /// should always be available. No retry logic - if missing, it's a bug.
+    /// This fetches the task, extracts the CubeQuery, and retrieves schema_ids.
+    /// Schema_ids are first checked on the task itself; if empty, they are
+    /// fetched from the parent CubeQueryTask via parentTaskId.
     pub async fn from_task_id(
         client: Arc<TercenClient>,
         task_id: &str,
@@ -49,8 +47,8 @@ impl ProductionContext {
         let response = task_service.get(request).await?;
         let task = response.into_inner();
 
-        // Extract CubeQuery and metadata from task (but NOT schema_ids - that comes from CubeQueryTask)
-        let (cube_query, project_id, operator_settings, task_environment) =
+        // Extract CubeQuery, schema_ids, parent_task_id, and metadata from task
+        let (cube_query, project_id, operator_settings, task_environment, mut schema_ids, parent_task_id) =
             match task.object.as_ref() {
                 Some(e_task::Object::Computationtask(ct)) => (
                     ct.query
@@ -60,6 +58,8 @@ impl ProductionContext {
                     ct.project_id.clone(),
                     ct.query.as_ref().and_then(|q| q.operator_settings.clone()),
                     &ct.environment,
+                    ct.schema_ids.clone(),
+                    ct.parent_task_id.clone(),
                 ),
                 Some(e_task::Object::Runcomputationtask(rct)) => (
                     rct.query
@@ -69,6 +69,8 @@ impl ProductionContext {
                     rct.project_id.clone(),
                     rct.query.as_ref().and_then(|q| q.operator_settings.clone()),
                     &rct.environment,
+                    rct.schema_ids.clone(),
+                    rct.parent_task_id.clone(),
                 ),
                 Some(e_task::Object::Cubequerytask(cqt)) => (
                     cqt.query
@@ -78,6 +80,8 @@ impl ProductionContext {
                     cqt.project_id.clone(),
                     cqt.query.as_ref().and_then(|q| q.operator_settings.clone()),
                     &cqt.environment,
+                    cqt.schema_ids.clone(),
+                    String::new(), // CubeQueryTask has no parent
                 ),
                 _ => return Err("Unsupported task type".into()),
             };
@@ -108,13 +112,18 @@ impl ProductionContext {
             workflow_id, step_id
         );
 
-        // Fetch schema_ids from CubeQueryTask (the canonical source)
-        // Path: workflow → step → model.taskId → CubeQueryTask.schema_ids
-        let schema_ids =
-            Self::fetch_schema_ids_from_cube_query_task(&client, &workflow_id, &step_id).await?;
+        // Get schema_ids: try task first, fall back to parent CubeQueryTask via parentTaskId
+        if schema_ids.is_empty() && !parent_task_id.is_empty() {
+            println!(
+                "[ProductionContext] schema_ids empty on task, fetching from parent CubeQueryTask {}",
+                parent_task_id
+            );
+            schema_ids =
+                Self::fetch_schema_ids_from_parent_task(&client, &parent_task_id).await?;
+        }
 
         if schema_ids.is_empty() {
-            println!("[ProductionContext] schema_ids is empty");
+            println!("[ProductionContext] WARNING: schema_ids is empty");
         } else {
             println!(
                 "[ProductionContext] Found {} schema_ids: {:?}",
@@ -257,95 +266,32 @@ impl ProductionContext {
         Ok(Self(base))
     }
 
-    /// Fetch schema_ids from the CubeQueryTask (canonical source)
+    /// Fetch schema_ids from the parent CubeQueryTask via parentTaskId.
     ///
-    /// Path: workflow → step → model.taskId → CubeQueryTask.schema_ids
-    ///
-    /// The CubeQueryTask must complete before the operator runs, so this
-    /// should always succeed. No retry logic - if missing, it's a bug.
-    async fn fetch_schema_ids_from_cube_query_task(
+    /// The worker populates schema_ids on the CubeQueryTask (not the RunComputationTask).
+    /// This method fetches the parent task to get them.
+    async fn fetch_schema_ids_from_parent_task(
         client: &TercenClient,
-        workflow_id: &str,
-        step_id: &str,
+        parent_task_id: &str,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        use crate::client::proto::{e_step, e_task, GetRequest};
+        use crate::client::proto::{e_task, GetRequest};
 
-        // Fetch workflow
-        let mut workflow_service = client.workflow_service()?;
-        let request = tonic::Request::new(GetRequest {
-            id: workflow_id.to_string(),
-            ..Default::default()
-        });
-        let response = workflow_service.get(request).await?;
-        let e_workflow = response.into_inner();
-
-        let workflow = e_workflow
-            .object
-            .as_ref()
-            .map(|obj| match obj {
-                crate::client::proto::e_workflow::Object::Workflow(wf) => wf,
-            })
-            .ok_or("EWorkflow has no workflow object")?;
-
-        // Find the step by step_id
-        let step = workflow
-            .steps
-            .iter()
-            .find(|s| {
-                s.object.as_ref().is_some_and(|obj| match obj {
-                    e_step::Object::Datastep(ds) => ds.id == step_id,
-                    e_step::Object::Crosstabstep(cs) => cs.id == step_id,
-                    _ => false,
-                })
-            })
-            .ok_or_else(|| format!("Step {} not found in workflow {}", step_id, workflow_id))?;
-
-        // Get the CubeQueryTask ID from the step's model.taskId
-        let cube_query_task_id = match step.object.as_ref() {
-            Some(e_step::Object::Datastep(ds)) => ds.model.as_ref().and_then(|m| {
-                if !m.task_id.is_empty() {
-                    Some(m.task_id.clone())
-                } else {
-                    None
-                }
-            }),
-            Some(e_step::Object::Crosstabstep(cs)) => cs.model.as_ref().and_then(|m| {
-                if !m.task_id.is_empty() {
-                    Some(m.task_id.clone())
-                } else {
-                    None
-                }
-            }),
-            _ => None,
-        }
-        .ok_or_else(|| {
-            format!(
-                "Step {} has no model.taskId - CubeQueryTask may not have completed",
-                step_id
-            )
-        })?;
-
-        println!(
-            "[ProductionContext] CubeQueryTask ID: {}",
-            cube_query_task_id
-        );
-
-        // Fetch the CubeQueryTask
         let mut task_service = client.task_service()?;
         let request = tonic::Request::new(GetRequest {
-            id: cube_query_task_id.clone(),
+            id: parent_task_id.to_string(),
             ..Default::default()
         });
         let response = task_service.get(request).await?;
         let task = response.into_inner();
 
-        // Extract schema_ids from CubeQueryTask
         let schema_ids = match task.object.as_ref() {
             Some(e_task::Object::Cubequerytask(cqt)) => cqt.schema_ids.clone(),
+            Some(e_task::Object::Computationtask(ct)) => ct.schema_ids.clone(),
+            Some(e_task::Object::Runcomputationtask(rct)) => rct.schema_ids.clone(),
             _ => {
                 return Err(format!(
-                    "Task {} is not a CubeQueryTask as expected",
-                    cube_query_task_id
+                    "Parent task {} has unexpected type",
+                    parent_task_id
                 )
                 .into())
             }
@@ -353,15 +299,16 @@ impl ProductionContext {
 
         if schema_ids.is_empty() {
             return Err(format!(
-                "CubeQueryTask {} has empty schema_ids - this should not happen",
-                cube_query_task_id
+                "Parent CubeQueryTask {} has empty schema_ids",
+                parent_task_id
             )
             .into());
         }
 
         println!(
-            "[ProductionContext] Found {} schema_ids from CubeQueryTask",
-            schema_ids.len()
+            "[ProductionContext] Found {} schema_ids from parent task {}",
+            schema_ids.len(),
+            parent_task_id
         );
 
         Ok(schema_ids)
