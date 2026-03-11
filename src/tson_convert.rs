@@ -122,6 +122,10 @@ fn tson_column_to_polars_series(col_name: &str, col_data: &TsonValue) -> Result<
             let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
             Ok(Series::new(col_name.into(), i64_values))
         }
+        TsonValue::LSTI64(values) => {
+            // i64 array - direct conversion
+            Ok(Series::new(col_name.into(), values.as_slice()))
+        }
         TsonValue::LSTI16(values) => {
             // i16 array - convert to i64
             let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
