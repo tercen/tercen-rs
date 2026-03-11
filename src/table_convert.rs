@@ -68,6 +68,7 @@ pub fn dataframe_to_table(df: &DataFrame) -> Result<proto::Table, Box<dyn std::e
 fn infer_column_type(dtype: &DataType) -> String {
     match dtype {
         DataType::String => "string".to_string(),
+        DataType::Float32 => "double".to_string(),
         DataType::Float64 => "double".to_string(),
         DataType::Int32 => "int32".to_string(),
         DataType::Int64 => "int64".to_string(),
@@ -100,12 +101,19 @@ fn encode_column_values(series: &Series) -> Result<Vec<u8>, Box<dyn std::error::
                 .collect();
             TsonValue::LSTSTR(str_vec.into())
         }
+        DataType::Float32 => {
+            let f32_vec: Vec<f32> = series
+                .f32()?
+                .into_iter()
+                .map(|opt| opt.unwrap_or(0.0))
+                .collect();
+            TsonValue::LSTF32(f32_vec)
+        }
         DataType::Float64 => {
-            // Double column - use LSTF64 for Float64List
             let f64_vec: Vec<f64> = series
                 .f64()?
                 .into_iter()
-                .map(|opt| opt.unwrap_or(0.0)) // TODO: Handle nulls properly
+                .map(|opt| opt.unwrap_or(0.0))
                 .collect();
             TsonValue::LSTF64(f64_vec)
         }

@@ -118,48 +118,37 @@ fn tson_column_to_polars_series(col_name: &str, col_data: &TsonValue) -> Result<
             Ok(Series::new(col_name.into(), values.as_slice()))
         }
         TsonValue::LSTI32(values) => {
-            // i32 array - convert to i64 for Polars
-            let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
-            Ok(Series::new(col_name.into(), i64_values))
+            Ok(Series::new(col_name.into(), values.as_slice()))
         }
         TsonValue::LSTI64(values) => {
-            // i64 array - direct conversion
             Ok(Series::new(col_name.into(), values.as_slice()))
         }
         TsonValue::LSTI16(values) => {
-            // i16 array - convert to i64
-            let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
-            Ok(Series::new(col_name.into(), i64_values))
+            let i32_values: Vec<i32> = values.iter().map(|&v| v as i32).collect();
+            Ok(Series::new(col_name.into(), i32_values))
         }
         TsonValue::LSTU16(values) => {
-            // u16 array - convert to i64
-            let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
-            Ok(Series::new(col_name.into(), i64_values))
+            let i32_values: Vec<i32> = values.iter().map(|&v| v as i32).collect();
+            Ok(Series::new(col_name.into(), i32_values))
         }
         TsonValue::LSTU32(values) => {
-            // u32 array - convert to i64
             let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
             Ok(Series::new(col_name.into(), i64_values))
         }
         TsonValue::LSTU64(values) => {
-            // u64 array - convert to i64 (may truncate for very large values)
             let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
             Ok(Series::new(col_name.into(), i64_values))
         }
         TsonValue::LSTU8(values) => {
-            // u8 array - convert to i64
-            let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
-            Ok(Series::new(col_name.into(), i64_values))
+            let i32_values: Vec<i32> = values.iter().map(|&v| v as i32).collect();
+            Ok(Series::new(col_name.into(), i32_values))
         }
         TsonValue::LSTI8(values) => {
-            // i8 array - convert to i64
-            let i64_values: Vec<i64> = values.iter().map(|&v| v as i64).collect();
-            Ok(Series::new(col_name.into(), i64_values))
+            let i32_values: Vec<i32> = values.iter().map(|&v| v as i32).collect();
+            Ok(Series::new(col_name.into(), i32_values))
         }
         TsonValue::LSTF32(values) => {
-            // f32 array - convert to f64
-            let f64_values: Vec<f64> = values.iter().map(|&v| v as f64).collect();
-            Ok(Series::new(col_name.into(), f64_values))
+            Ok(Series::new(col_name.into(), values.as_slice()))
         }
         TsonValue::LSTSTR(strvec) => {
             // String array
