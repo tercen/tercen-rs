@@ -319,6 +319,23 @@ impl ContextBase {
         .await
     }
 
+    /// Save a tabular result (DataFrame) back to Tercen
+    ///
+    /// Used by computation operators that produce numeric/string columns.
+    pub async fn save_table(
+        &self,
+        df: &polars::frame::DataFrame,
+        task: &mut ETask,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        crate::result::save_table(
+            Arc::clone(&self.client),
+            &self.project_id,
+            df,
+            task,
+        )
+        .await
+    }
+
     /// Save multiple PNG plot results back to Tercen (multi-page)
     ///
     /// # Arguments

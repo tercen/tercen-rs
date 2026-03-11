@@ -179,6 +179,62 @@ pub async fn save_results(
     Ok(())
 }
 
+/// Save a tabular result (DataFrame) back to Tercen
+///
+/// Used by computation operators (mean, sum, PCA, etc.) that produce
+/// numeric/string columns rather than image files.
+///
+/// The DataFrame should contain `.ci` and `.ri` columns (cell indices)
+/// plus any computed output columns (e.g., `value`, `mean_y`, `mean_x`).
+///
+/// # Arguments
+/// * `client` - Tercen client for gRPC calls
+/// * `project_id` - Project ID to upload the result to
+/// * `df` - Polars DataFrame with the computed results
+/// * `task` - Mutable reference to the task
+pub async fn save_table(
+    client: Arc<TercenClient>,
+    project_id: &str,
+    df: &polars::frame::DataFrame,
+    task: &mut proto::ETask,
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "Saving table result: {} rows, {} columns",
+        df.height(),
+        df.width()
+    );
+
+    let table = dataframe_to_table(df)?;
+    let operator_result = create_operator_result(table)?;
+    let result_bytes = serialize_operator_result(&operator_result)?;
+    println!("  TSON size: {} bytes", result_bytes.len());
+
+    let file_doc = create_file_document(project_id, result_bytes.len() as i32);
+    let existing_file_result_id = get_task_file_result_id(task)?;
+
+    if existing_file_result_id.is_empty() {
+        let file_doc_id = upload_result_file(&client, file_doc, result_bytes).await?;
+        update_task_file_result_id(task, &file_doc_id)?;
+        let mut task_service = client.task_service()?;
+        task_service.update(task.clone()).await?;
+        println!("Table result uploaded (file ID: {})", file_doc_id);
+    } else {
+        let mut file_service = client.file_service()?;
+        let get_req = proto::GetRequest {
+            id: existing_file_result_id.clone(),
+            ..Default::default()
+        };
+        let e_file_doc = file_service.get(get_req).await?.into_inner();
+        use proto::e_file_document;
+        let file_doc_obj = e_file_doc.object.ok_or("EFileDocument has no object")?;
+        let e_file_document::Object::Filedocument(file_doc) = file_doc_obj;
+        upload_result_file(&client, file_doc, result_bytes).await?;
+        println!("Table result uploaded to existing file: {}", existing_file_result_id);
+    }
+
+    Ok(())
+}
+
 /// Save a PNG plot result back to Tercen
 ///
 /// Takes the generated PNG buffer, converts it to Tercen's result format,
