@@ -316,6 +316,10 @@ impl TercenContext for DevContext {
         self.0.operator_settings()
     }
 
+    fn visuals_error(&self) -> Option<&str> {
+        self.0.visuals_error()
+    }
+
     fn color_infos(&self) -> &[ColorInfo] {
         self.0.color_infos()
     }
