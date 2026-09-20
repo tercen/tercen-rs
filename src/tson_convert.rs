@@ -19,12 +19,45 @@ pub fn tson_to_dataframe(tson_bytes: &[u8]) -> Result<polars::frame::DataFrame> 
         return Ok(polars::frame::DataFrame::empty());
     }
 
-    // Decode TSON
-    let tson_value = rustson::decode_bytes(tson_bytes)
-        .map_err(|e| TercenError::Other(format!("Failed to decode TSON: {:?}", e)))?;
+    // A response is not one document. `TableStreamer::stream_tson` concatenates every gRPC
+    // message, and the server pages its answer — about 15,000 rows a page — so the buffer holds
+    // one complete TSON document per page, back to back. Decoding only the first silently
+    // discards the rest, which makes a large request pathological: asking for a million rows
+    // transfers a million rows, uses fifteen thousand, and the caller asks again from a slightly
+    // later offset. Measured on a 19.5 M-cell crosstab, that cost 800 bytes on the wire per cell
+    // of three columns that need sixteen, and 647 s where reading every document takes 8 s.
+    let mut frames: Vec<polars::frame::DataFrame> = Vec::new();
+    let mut cursor = std::io::Cursor::new(tson_bytes);
+    while (cursor.position() as usize) < tson_bytes.len() {
+        let start = cursor.position();
+        let tson_value = rustson::decode(cursor.clone())
+            .map_err(|e| TercenError::Other(format!("Failed to decode TSON: {:?}", e)))?;
+        // `rustson::decode` takes the cursor by value and does not report how far it read, so
+        // the document's length comes from re-encoding it. A `decode_from(&mut Cursor)` in
+        // rustson would remove this.
+        let consumed = rustson::encode(&tson_value)
+            .map_err(|e| TercenError::Other(format!("Failed to size TSON document: {:?}", e)))?
+            .len();
+        if consumed == 0 {
+            break;
+        }
+        cursor.set_position(start + consumed as u64);
+        let df = tson_value_to_dataframe(&tson_value)?;
+        if !df.is_empty() {
+            frames.push(df);
+        }
+    }
 
-    // Convert TSON value to DataFrame
-    tson_value_to_dataframe(&tson_value)
+    let mut frames = frames.into_iter();
+    let Some(mut out) = frames.next() else {
+        return Ok(polars::frame::DataFrame::empty());
+    };
+    for df in frames {
+        out = out
+            .vstack(&df)
+            .map_err(|e| TercenError::Other(format!("Failed to concatenate TSON pages: {e}")))?;
+    }
+    Ok(out)
 }
 
 /// Convert a TSON value to Polars DataFrame
