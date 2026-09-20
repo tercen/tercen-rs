@@ -48,6 +48,17 @@ pub trait TercenContext: Send + Sync {
     /// Get the operator settings (if available)
     fn operator_settings(&self) -> Option<&OperatorSettings>;
 
+    /// Why the step's presentation settings are missing, if they are.
+    ///
+    /// Colours, palette, chart kind and crosstab dimensions come from the step inside the
+    /// workflow, and are optional: they never fail a run, because an operator that computes
+    /// rather than draws does not need them and the workflow can lag behind the task. An
+    /// operator that renders an image should check this rather than silently drawing in
+    /// default colours.
+    fn visuals_error(&self) -> Option<&str> {
+        None
+    }
+
     /// Get the color information extracted from the workflow
     fn color_infos(&self) -> &[ColorInfo];
 
