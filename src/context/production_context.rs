@@ -34,6 +34,32 @@ impl ProductionContext {
         client: Arc<TercenClient>,
         task_id: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::load(client, task_id, true).await
+    }
+
+    /// Load a context **without** the step's presentation settings.
+    ///
+    /// Colours, palette, chart kind and crosstab dimensions live on the step inside the
+    /// workflow, which is a different document from the task and has its own lifecycle. An
+    /// operator that computes rather than draws needs none of them, and fetching them couples
+    /// it to a document it never reads: a run can then fail with `Step '…' not found in
+    /// workflow` when the saved workflow has not caught up with an edit in the interface.
+    ///
+    /// This is what the R and Python clients do for every production run — they build the
+    /// context from the task alone and take colour *factors* from the query — so a transform
+    /// operator written in Rust behaves like its R equivalent.
+    pub async fn from_task_id_data_only(
+        client: Arc<TercenClient>,
+        task_id: &str,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::load(client, task_id, false).await
+    }
+
+    async fn load(
+        client: Arc<TercenClient>,
+        task_id: &str,
+        load_visuals: bool,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         use crate::client::proto::{e_task, GetRequest};
 
         println!("[ProductionContext] Fetching task {}...", task_id);
@@ -172,28 +198,54 @@ impl ProductionContext {
         let mut layer_palette_name = None;
         let mut layer_y_factor_names = Vec::new();
 
-        if !workflow_id.is_empty() && !step_id.is_empty() {
-            let workflow = super::helpers::fetch_workflow(&client, &workflow_id).await?;
-
-            per_layer_colors = Some(
-                super::helpers::extract_per_layer_color_info_from_workflow(
-                    &client,
-                    &schema_ids,
-                    &workflow,
-                    &step_id,
-                    "ProductionContext",
-                )
-                .await?,
-            );
-
-            color_infos = super::helpers::extract_color_info_from_workflow(
+        // Presentation settings live on the step, inside the workflow. They are optional: an
+        // operator that computes rather than draws never reads them, and the workflow can
+        // disagree with the task for a moment after an edit. So nothing here may fail the run —
+        // the reason is recorded instead, and an operator that needs colours can refuse to
+        // continue by checking `visuals_error()`.
+        let mut visuals_error: Option<String> = None;
+        if load_visuals && !workflow_id.is_empty() && !step_id.is_empty() {
+            let workflow = match super::helpers::fetch_workflow(&client, &workflow_id).await {
+                Ok(w) => Some(w),
+                Err(e) => {
+                    eprintln!("[ProductionContext] workflow {workflow_id} unavailable: {e}");
+                    visuals_error = Some(format!("workflow {workflow_id} unavailable: {e}"));
+                    None
+                }
+            };
+            if let Some(workflow) = workflow {
+            match super::helpers::extract_per_layer_color_info_from_workflow(
                 &client,
                 &schema_ids,
                 &workflow,
                 &step_id,
                 "ProductionContext",
             )
-            .await?;
+            .await
+            {
+                Ok(v) => per_layer_colors = Some(v),
+                Err(e) => {
+                    eprintln!("[ProductionContext] per-layer colors unavailable: {e}");
+                    visuals_error = Some(e.to_string());
+                }
+            }
+
+            color_infos = match super::helpers::extract_color_info_from_workflow(
+                &client,
+                &schema_ids,
+                &workflow,
+                &step_id,
+                "ProductionContext",
+            )
+            .await
+            {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("[ProductionContext] colors unavailable: {e}");
+                    visuals_error = Some(e.to_string());
+                    Vec::new()
+                }
+            };
 
             point_size = match crate::extract_point_size_from_step(&workflow, &step_id) {
                 Ok(ps) => ps,
@@ -249,6 +301,12 @@ impl ProductionContext {
                     layer_y_factor_names
                 );
             }
+            }
+        }
+        if let Some(ref why) = visuals_error {
+            eprintln!(
+                "[ProductionContext] continuing without the step's presentation settings: {why}"
+            );
         }
 
         // Build ContextBase using the builder
@@ -259,6 +317,7 @@ impl ProductionContext {
             .workflow_id(workflow_id)
             .step_id(step_id)
             .project_id(project_id)
+            .visuals_error(visuals_error)
             .namespace(namespace)
             .operator_settings(operator_settings)
             .color_infos(color_infos)
@@ -354,6 +413,10 @@ impl TercenContext for ProductionContext {
 
     fn operator_settings(&self) -> Option<&OperatorSettings> {
         self.0.operator_settings()
+    }
+
+    fn visuals_error(&self) -> Option<&str> {
+        self.0.visuals_error()
     }
 
     fn color_infos(&self) -> &[ColorInfo] {

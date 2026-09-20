@@ -16,6 +16,7 @@ use std::sync::Arc;
 /// Both ProductionContext and DevContext wrap this struct using the newtype pattern.
 /// This eliminates field duplication and provides a single place for common methods.
 pub struct ContextBase {
+    visuals_error: Option<String>,
     // Core
     pub(super) client: Arc<TercenClient>,
     pub(super) cube_query: CubeQuery,
@@ -125,6 +126,15 @@ impl ContextBase {
 
     pub fn layer_palette_name(&self) -> Option<&str> {
         self.layer_palette_name.as_deref()
+    }
+
+    /// Why the step's presentation settings are missing, if they are.
+    ///
+    /// They are optional and never fail a run (see `ProductionContext::from_task_id`), so an
+    /// operator that genuinely needs colours — one that renders an image itself — should check
+    /// this and stop rather than draw in default colours without saying so.
+    pub fn visuals_error(&self) -> Option<&str> {
+        self.visuals_error.as_deref()
     }
 
     pub fn per_layer_colors(&self) -> Option<&PerLayerColorConfig> {
@@ -361,6 +371,7 @@ impl ContextBase {
 ///
 /// Used by ProductionContext and DevContext constructors to build the common base.
 pub struct ContextBaseBuilder {
+    visuals_error: Option<String>,
     client: Option<Arc<TercenClient>>,
     cube_query: Option<CubeQuery>,
     schema_ids: Vec<String>,
@@ -412,6 +423,7 @@ impl ContextBaseBuilder {
             layer_palette_name: None,
             per_layer_colors: None,
             layer_y_factor_names: Vec::new(),
+            visuals_error: None,
         }
     }
 
@@ -505,6 +517,11 @@ impl ContextBaseBuilder {
         self
     }
 
+    pub fn visuals_error(mut self, visuals_error: Option<String>) -> Self {
+        self.visuals_error = visuals_error;
+        self
+    }
+
     pub fn per_layer_colors(mut self, per_layer_colors: Option<PerLayerColorConfig>) -> Self {
         self.per_layer_colors = per_layer_colors;
         self
@@ -525,6 +542,7 @@ impl ContextBaseBuilder {
             .ok_or("ContextBaseBuilder: cube_query is required")?;
 
         Ok(ContextBase {
+            visuals_error: self.visuals_error,
             client,
             cube_query,
             schema_ids: self.schema_ids,
