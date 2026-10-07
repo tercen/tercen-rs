@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Tercen"]
 description = "Tercen SDK for Rust — gRPC client, data streaming, operator context, and more"
-license = "MIT"
+license = "Apache-2.0"
 
 [lib]
 name = "tercen_rs"
